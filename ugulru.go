@@ -86,3 +86,36 @@ func (c *InMemoryCache[K, V]) Remove(key K) {
 		c.list.Remove(elem)
 	}
 }
+
+func (c *InMemoryCache[K, V]) Load(key K, loader func() (V, error)) (V, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if elem, ok := c.cache[key]; ok {
+		entry := elem.Value.(*entry[K, V])
+		if time.Since(entry.timestamp) > c.ttl {
+			c.list.Remove(elem)
+		} else {
+			c.list.MoveToFront(elem)
+			return entry.value, nil
+		}
+	}
+
+	value, err := loader()
+	if err != nil {
+		return value, err
+	}
+
+	if c.list.Len() >= c.capacity {
+		elem := c.list.Back()
+		entry := elem.Value.(*entry[K, V])
+		delete(c.cache, entry.key)
+		c.list.Remove(elem)
+	}
+
+	entry := &entry[K, V]{key: key, value: value, timestamp: time.Now()}
+	elem := c.list.PushFront(entry)
+	c.cache[key] = elem
+
+	return value, nil
+}
