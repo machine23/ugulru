@@ -76,3 +76,13 @@ func (c *InMemoryCache[K, V]) Put(key K, value V) {
 	elem := c.list.PushFront(entry)
 	c.cache[key] = elem
 }
+
+func (c *InMemoryCache[K, V]) Remove(key K) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if elem, ok := c.cache[key]; ok {
+		delete(c.cache, key)
+		c.list.Remove(elem)
+	}
+}

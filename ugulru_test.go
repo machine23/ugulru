@@ -40,3 +40,34 @@ func TestInMemoryCache_Put(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, 4, value)
 }
+
+func TestInMemoryCache_Remove(t *testing.T) {
+	cache := ugulru.NewInMemoryCache[string, int](2, 5*time.Minute)
+
+	// Test removing an existing entry
+	cache.Put("key1", 1)
+	cache.Remove("key1")
+	_, ok := cache.Get("key1")
+	assert.False(t, ok)
+
+	// Test removing a non-existing entry
+	cache.Remove("key2") // should not cause any error
+	_, ok = cache.Get("key2")
+	assert.False(t, ok)
+
+	// Test removing an entry from a full cache
+	cache.Put("key1", 1)
+	cache.Put("key2", 2)
+	cache.Remove("key1")
+	_, ok = cache.Get("key1")
+	assert.False(t, ok)
+	value, ok := cache.Get("key2")
+	assert.True(t, ok)
+	assert.Equal(t, 2, value)
+
+	// Test removing an entry and adding a new one
+	cache.Put("key3", 3)
+	value, ok = cache.Get("key3")
+	assert.True(t, ok)
+	assert.Equal(t, 3, value)
+}
