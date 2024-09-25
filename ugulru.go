@@ -10,6 +10,7 @@ type Cache[K comparable, V any] interface {
 	Get(key K) (V, bool)
 	Put(key K, value V)
 	Remove(key K)
+	RemoveExpired()
 	Load(key K, loader func() (V, error)) (V, error)
 }
 
@@ -118,4 +119,19 @@ func (c *InMemoryCache[K, V]) Load(key K, loader func() (V, error)) (V, error) {
 	c.cache[key] = elem
 
 	return value, nil
+}
+
+func (c *InMemoryCache[K, V]) RemoveExpired() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for elem := c.list.Back(); elem != nil; elem = elem.Prev() {
+		entry := elem.Value.(*entry[K, V])
+		if time.Since(entry.timestamp) > c.ttl {
+			delete(c.cache, entry.key)
+			c.list.Remove(elem)
+		} else {
+			break
+		}
+	}
 }

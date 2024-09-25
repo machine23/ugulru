@@ -166,3 +166,39 @@ func TestInMemoryCache_Load(t *testing.T) {
 		assert.False(t, ok)
 	})
 }
+
+func TestInMemoryCache_RemoveExpired(t *testing.T) {
+	cache := ugulru.NewInMemoryCache[string, int](3, 1*time.Second)
+
+	// Add entries to the cache
+	cache.Put("key1", 1)
+	cache.Put("key2", 2)
+	cache.Put("key3", 3)
+
+	// Wait for entries to expire
+	time.Sleep(2 * time.Second)
+
+	// Remove expired entries
+	cache.RemoveExpired()
+
+	// Verify that all entries have been removed
+	_, ok := cache.Get("key1")
+	assert.False(t, ok, "key1 should be expired and removed")
+	_, ok = cache.Get("key2")
+	assert.False(t, ok, "key2 should be expired and removed")
+	_, ok = cache.Get("key3")
+	assert.False(t, ok, "key3 should be expired and removed")
+
+	// Add new entries to the cache
+	cache.Put("key4", 4)
+	cache.Put("key5", 5)
+
+	// Verify that new entries are not removed
+	cache.RemoveExpired()
+	value, ok := cache.Get("key4")
+	assert.True(t, ok, "key4 should not be expired")
+	assert.Equal(t, 4, value)
+	value, ok = cache.Get("key5")
+	assert.True(t, ok, "key5 should not be expired")
+	assert.Equal(t, 5, value)
+}
