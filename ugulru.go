@@ -14,6 +14,8 @@ type Cache[K comparable, V any] interface {
 	Load(key K, loader func() (V, error)) (V, error)
 }
 
+// InMemoryCache is an in-memory LRU (Least Recently Used) cache that stores key-value pairs with a fixed capacity and
+// a time-to-live (TTL) duration.
 type InMemoryCache[K comparable, V any] struct {
 	cache    map[K]*list.Element
 	list     *list.List
@@ -28,6 +30,7 @@ type entry[K comparable, V any] struct {
 	timestamp time.Time
 }
 
+// NewInMemoryCache creates a new in-memory cache with the specified capacity and TTL duration.
 func NewInMemoryCache[K comparable, V any](capacity int, ttl time.Duration) *InMemoryCache[K, V] {
 	return &InMemoryCache[K, V]{
 		cache:    make(map[K]*list.Element),
@@ -37,6 +40,8 @@ func NewInMemoryCache[K comparable, V any](capacity int, ttl time.Duration) *InM
 	}
 }
 
+// Get retrieves a value from the cache based on the given key. It returns the value and a boolean indicating whether
+// the key exists in the cache.
 func (c *InMemoryCache[K, V]) Get(key K) (V, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -54,6 +59,7 @@ func (c *InMemoryCache[K, V]) Get(key K) (V, bool) {
 	return zero, false
 }
 
+// Put inserts or updates the value associated with the given key.
 func (c *InMemoryCache[K, V]) Put(key K, value V) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -78,6 +84,7 @@ func (c *InMemoryCache[K, V]) Put(key K, value V) {
 	c.cache[key] = elem
 }
 
+// Remove deletes the entry with the given key from the cache.
 func (c *InMemoryCache[K, V]) Remove(key K) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -88,6 +95,9 @@ func (c *InMemoryCache[K, V]) Remove(key K) {
 	}
 }
 
+// Load retrieves the value from the cache based on the given key. If the key exists in the cache and has not expired,
+// the value is returned. Otherwise, the loader function is called to load the value, which is then stored in the cache
+// and returned.
 func (c *InMemoryCache[K, V]) Load(key K, loader func() (V, error)) (V, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -121,6 +131,7 @@ func (c *InMemoryCache[K, V]) Load(key K, loader func() (V, error)) (V, error) {
 	return value, nil
 }
 
+// RemoveExpired removes all expired entries from the cache.
 func (c *InMemoryCache[K, V]) RemoveExpired() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
